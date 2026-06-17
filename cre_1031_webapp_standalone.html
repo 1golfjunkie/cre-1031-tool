@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRE 1031 Exchange Comparison Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            color: #1a1a1a;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+        header { 
+            background: white; 
+            border-bottom: 1px solid #e0e0e0;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+        }
+        h1 { font-size: 28px; font-weight: 600; margin-bottom: 0.5rem; }
+        .subtitle { color: #666; font-size: 14px; }
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 16px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        button:hover { background: #f5f5f5; border-color: #999; }
+        button.active { 
+            background: #2563eb; 
+            color: white; 
+            border-color: #2563eb;
+        }
+        .form-section {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-size: 14px;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+        .metric-card {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .metric-label { font-size: 12px; color: #666; margin-bottom: 0.5rem; }
+        .metric-value { font-size: 22px; font-weight: 600; color: #1a1a1a; margin-bottom: 0.25rem; }
+        .metric-subtext { font-size: 12px; color: #999; }
+        .property-card {
+            background: white;
+            border-left: 4px solid #2563eb;
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid #2563eb;
+            border-radius: 6px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .property-card.creekside { border-left-color: #16a34a; }
+        .property-card.desert { border-left-color: #2563eb; }
+        .property-card.sunchase { border-left-color: #f59e0b; }
+        .property-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        .property-title { font-size: 16px; font-weight: 600; }
+        .property-location { font-size: 13px; color: #666; margin-top: 0.25rem; }
+        .delete-btn {
+            background: #dc2626;
+            color: white;
+            border-color: #dc2626;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .delete-btn:hover { background: #b91c1c; }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .comparison-table th, .comparison-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+        .comparison-table th {
+            background: #f9f9f9;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .comparison-table tr:last-child td { border-bottom: none; }
+        .comparison-table td:not(:first-child) {
+            text-align: right;
+            font-weight: 500;
+        }
+        .tenant-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 1rem;
+        }
+        .tenant-table th, .tenant-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .tenant-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+        .export-section {
+            display: flex;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+        .success-msg {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 14px;
+        }
+        .error-msg {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 14px;
+        }
+        .timeline {
+            height: 120px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-top: 1rem;
+            position: relative;
+        }
+        svg { width: 100%; height: 100%; }
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .property-header { flex-direction: column; }
+            .comparison-table { font-size: 12px; }
+            .comparison-table th, .comparison-table td { padding: 8px 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const CRE1031App = () => {
+            const [activeTab, setActiveTab] = useState('properties');
+            const [properties, setProperties] = useState([
+                {
+                    id: 1,
+                    name: 'Creekside Centennial Tech Center',
+                    address: '6403 South Uvalda Street, Centennial, CO 80111',
+                    price: 18180300,
+                    pricePsf: 287,
+                    sf: 63271,
+                    noi: 1108749,
+                    capRate: 6.1,
+                    occupancy: 100,
+                    walt: 6.9,
+                    buildings: 1,
+                    yearBuilt: 2025,
+                    tenants: [
+                        { name: 'Arapahoe Library District', sf: 23173, rate: 16.95, expires: '2036-04-30', pct: 36.6 },
+                        { name: 'IIM Camper', sf: 14020, rate: 17.25, expires: '2031-03-31', pct: 22.2 }
+                    ],
+                    type: 'creekside'
+                },
+                {
+                    id: 2,
+                    name: 'Desert Canyon Business Center',
+                    address: '249-257 Elliott Rd, Henderson, NV 89011',
+                    price: 24500000,
+                    pricePsf: 257,
+                    sf: 95364,
+                    noi: 1423540,
+                    capRate: 5.81,
+                    occupancy: 90,
+                    walt: 3.09,
+                    buildings: 5,
+                    yearBuilt: 2004,
+                    tenants: [
+                        { name: 'Integrity Customs', sf: 17553, rate: 13.5, expires: '2030-02-28', pct: 18.4 }
+                    ],
+                    type: 'desert'
+                },
+                {
+                    id: 3,
+                    name: 'Sunchase Business Park',
+                    address: '3884 South River Road, St. George, UT 84790',
+                    price: 18600000,
+                    pricePsf: 186,
+                    sf: 100110,
+                    noi: 1120772,
+                    capRate: 6.03,
+                    occupancy: 100,
+                    walt: 2.5,
+                    buildings: 5,
+                    yearBuilt: 2006,
+                    tenants: [
+                        { name: 'Decked', sf: 45106, rate: 9.1, expires: '2027-02-28', pct: 45 }
+                    ],
+                    type: 'sunchase'
+                }
+            ]);
+            const [formData, setFormData] = useState({});
+            const [editingId, setEditingId] = useState(null);
+            const [message, setMessage] = useState('');
+
+            const handleAddNew = () => {
+                setEditingId(0);
+                setFormData({
+                    name: '',
+                    address: '',
+                    price: '',
+                    sf: '',
+                    noi: '',
+                    capRate: '',
+                    occupancy: 100,
+                    walt: '',
+                    buildings: 1,
+                    yearBuilt: new Date().getFullYear(),
+                    tenants: []
+                });
+            };
+
+            const handleSave = () => {
+                if (!formData.name || !formData.price || !formData.sf) {
+                    setMessage({ type: 'error', text: 'Please fill in required fields' });
+                    return;
+                }
+                if (editingId === 0) {
+                    const newProp = {
+                        id: Math.max(...properties.map(p => p.id), 0) + 1,
+                        ...formData,
+                        pricePsf: Math.round(formData.price / formData.sf)
+                    };
+                    setProperties([...properties, newProp]);
+                    setMessage({ type: 'success', text: 'Property added successfully!' });
+                } else {
+                    setProperties(properties.map(p => 
+                        p.id === editingId 
+                            ? { ...formData, id: editingId, pricePsf: Math.round(formData.price / formData.sf) }
+                            : p
+                    ));
+                    setMessage({ type: 'success', text: 'Property updated!' });
+                }
+                setEditingId(null);
+                setTimeout(() => setMessage(''), 3000);
+            };
+
+            const handleDelete = (id) => {
+                if (window.confirm('Delete this property?')) {
+                    setProperties(properties.filter(p => p.id !== id));
+                    setMessage({ type: 'success', text: 'Property deleted' });
+                    setTimeout(() => setMessage(''), 3000);
+                }
+            };
+
+            const exportJSON = () => {
+                const dataStr = JSON.stringify(properties, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `cre-1031-properties-${new Date().toISOString().slice(0, 10)}.json`;
+                link.click();
+                setMessage({ type: 'success', text: 'Properties exported as JSON' });
+                setTimeout(() => setMessage(''), 3000);
+            };
+
+            const exportExcel = () => {
+                const data = properties.map(p => ({
+                    'Property Name': p.name,
+                    'Address': p.address,
+                    'Price': p.price,
+                    'Price/SF': p.pricePsf,
+                    'Total SF': p.sf,
+                    'Year 1 NOI': p.noi,
+                    'Cap Rate %': p.capRate,
+                    'Occupancy %': p.occupancy,
+                    'WALT (Years)': p.walt,
+                    'Buildings': p.buildings,
+                    'Year Built': p.yearBuilt
+                }));
+                const ws = XLSX.utils.json_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Properties');
+                XLSX.writeFile(wb, `cre-1031-comparison-${new Date().toISOString().slice(0, 10)}.xlsx`);
+                setMessage({ type: 'success', text: 'Comparison exported to Excel' });
+                setTimeout(() => setMessage(''), 3000);
+            };
+
+            const handleImportJSON = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const imported = JSON.parse(event.target.result);
+                        setProperties(Array.isArray(imported) ? imported : [imported]);
+                        setMessage({ type: 'success', text: 'Properties imported successfully!' });
+                        setTimeout(() => setMessage(''), 3000);
+                    } catch (err) {
+                        setMessage({ type: 'error', text: 'Failed to import JSON' });
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            return (
+                <>
+                    <header>
+                        <div className="container">
+                            <h1>🏢 CRE 1031 Exchange Comparison Tool</h1>
+                            <div className="subtitle">Multi-property analysis & team collaboration platform</div>
+                        </div>
+                    </header>
+
+                    <div className="container">
+                        {message && (
+                            <div className={message.type === 'success' ? 'success-msg' : 'error-msg'}>
+                                {message.text}
+                            </div>
+                        )}
+
+                        <div className="nav-buttons">
+                            <button 
+                                className={activeTab === 'properties' ? 'active' : ''}
+                                onClick={() => setActiveTab('properties')}
+                            >
+                                📋 Properties
+                            </button>
+                            <button 
+                                className={activeTab === 'comparison' ? 'active' : ''}
+                                onClick={() => setActiveTab('comparison')}
+                            >
+                                📊 Comparison
+                            </button>
+                            <button 
+                                className={activeTab === 'export' ? 'active' : ''}
+                                onClick={() => setActiveTab('export')}
+                            >
+                                💾 Export & Backup
+                            </button>
+                        </div>
+
+                        {activeTab === 'properties' && (
+                            <>
+                                <button onClick={handleAddNew} style={{ marginBottom: '1.5rem', background: '#16a34a', color: 'white', borderColor: '#16a34a' }}>
+                                    ➕ Add New Property
+                                </button>
+
+                                {editingId !== null && (
+                                    <div className="form-section">
+                                        <h2 style={{ marginBottom: '1.5rem' }}>{editingId === 0 ? 'New Property' : 'Edit Property'}</h2>
+                                        <div className="grid-2">
+                                            <div className="form-group">
+                                                <label>Property Name *</label>
+                                                <input 
+                                                    type="text"
+                                                    value={formData.name || ''}
+                                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                                    placeholder="e.g., Creekside Tech Center"
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Address</label>
+                                                <input 
+                                                    type="text"
+                                                    value={formData.address || ''}
+                                                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid-4">
+                                            <div className="form-group">
+                                                <label>Purchase Price *</label>
+                                                <input 
+                                                    type="number"
+                                                    value={formData.price || ''}
+                                                    onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value)})}
+                                                    placeholder="18000000"
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Total SF *</label>
+                                                <input 
+                                                    type="number"
+                                                    value={formData.sf || ''}
+                                                    onChange={(e) => setFormData({...formData, sf: parseFloat(e.target.value)})}
+                                                    placeholder="63271"
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Year 1 NOI</label>
+                                                <input 
+                                                    type="number"
+                                                    value={formData.noi || ''}
+                                                    onChange={(e) => setFormData({...formData, noi: parseFloat(e.target.value)})}
+                                                    placeholder="1100000"
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Cap Rate %</label>
+                                                <input 
+                                                    type="number"
+                                                    step="0.1"
+                                                    value={formData.capRate || ''}
+                                                    onChange={(e) => setFormData({...formData, capRate: parseFloat(e.target.value)})}
+                                                    placeholder="6.1"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid-4">
+                                            <div className="form-group">
+                                                <label>Occupancy %</label>
+                                                <input 
+                                                    type="number"
+                                                    value={formData.occupancy || 100}
+                                                    onChange={(e) => setFormData({...formData, occupancy: parseFloat(e.target.value)})}
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>WALT (Years)</label>
+                                                <input 
+                                                    type="number"
+                                                    step="0.1"
+                                                    value={formData.walt || ''}
+                                                    onChange={(e) => setFormData({...formData, walt: parseFloat(e.target.value)})}
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Buildings</label>
+                                                <input 
+                                                    type="number"
+                                                    value={formData.buildings || 1}
+                                                    onChange={(e) => setFormData({...formData, buildings: parseInt(e.target.value)})}
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Year Built</label>
+                                                <input 
+                                                    type="number"
+                                                    value={formData.yearBuilt || 2024}
+                                                    onChange={(e) => setFormData({...formData, yearBuilt: parseInt(e.target.value)})}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div style={{ marginTop: '1.5rem', display: 'flex', gap: '10px' }}>
+                                            <button onClick={handleSave} style={{ background: '#2563eb', color: 'white', borderColor: '#2563eb' }}>
+                                                ✓ Save Property
+                                            </button>
+                                            <button onClick={() => setEditingId(null)}>
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {properties.map((prop) => (
+                                    <div key={prop.id} className={`property-card ${prop.type}`}>
+                                        <div className="property-header">
+                                            <div>
+                                                <div className="property-title">{prop.name}</div>
+                                                <div className="property-location">{prop.address}</div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '10px' }}>
+                                                <button onClick={() => { setEditingId(prop.id); setFormData(prop); }} style={{ fontSize: '12px', padding: '6px 12px' }}>
+                                                    ✎ Edit
+                                                </button>
+                                                <button onClick={() => handleDelete(prop.id)} className="delete-btn">
+                                                    🗑 Delete
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid-4">
+                                            <div className="metric-card">
+                                                <div className="metric-label">Price</div>
+                                                <div className="metric-value">${(prop.price / 1000000).toFixed(1)}M</div>
+                                                <div className="metric-subtext">${prop.pricePsf}/SF</div>
+                                            </div>
+                                            <div className="metric-card">
+                                                <div className="metric-label">Year 1 NOI</div>
+                                                <div className="metric-value">${(prop.noi / 1000000).toFixed(2)}M</div>
+                                                <div className="metric-subtext">${(prop.noi / prop.sf).toFixed(2)}/SF</div>
+                                            </div>
+                                            <div className="metric-card">
+                                                <div className="metric-label">Cap Rate</div>
+                                                <div className="metric-value">{prop.capRate}%</div>
+                                                <div className="metric-subtext">{prop.occupancy}% occupied</div>
+                                            </div>
+                                            <div className="metric-card">
+                                                <div className="metric-label">WALT</div>
+                                                <div className="metric-value">{prop.walt} yrs</div>
+                                                <div className="metric-subtext">{prop.buildings} building(s)</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </>
+                        )}
+
+                        {activeTab === 'comparison' && (
+                            <>
+                                <h2 style={{ marginBottom: '1.5rem' }}>Property Comparison</h2>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="comparison-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Metric</th>
+                                                {properties.map((p) => (
+                                                    <th key={p.id}>{p.name}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Purchase Price</td>
+                                                {properties.map((p) => (
+                                                    <td key={p.id}>${(p.price / 1000000).toFixed(1)}M</td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td>Price/SF</td>
+                                                {properties.map((p) => (
+                                                    <td key={p.id}>${p.pricePsf}</td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td>Total SF</td>
+                                                {properties.map((p) => (
+                                                    <td key={p.id}>{p.sf.toLocaleString()}</td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td>Year 1 NOI</td>
+                                                {properties.map((p) => (
+                                                    <td key={p.id}>${(p.noi / 1000000).toFixed(2)}M</td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td>Cap Rate</td>
+                                                {properties.map((p) => (
+                                                    <td key={p.id}>{p.capRate}%</td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td>Occupancy</td>
+                                                {properties.map((p) => (
+                                                    <td key={p.id}>{p.occupancy}%</td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td>WALT</td>
+                                                {properties.map((p) => (
+                                                    <td key={p.id}>{p.walt} yrs</td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td>Buildings</td>
+                                                {properties.map((p) => (
+                                                    <td key={p.id}>{p.buildings}</td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td>Year Built</td>
+                                                {properties.map((p) => (
+                                                    <td key={p.id}>{p.yearBuilt}</td>
+                                                ))}
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        )}
+
+                        {activeTab === 'export' && (
+                            <>
+                                <h2 style={{ marginBottom: '1.5rem' }}>Export & Data Management</h2>
+                                <div className="form-section">
+                                    <h3 style={{ marginBottom: '1rem' }}>📥 Export Your Data</h3>
+                                    <div className="export-section">
+                                        <button onClick={exportJSON} style={{ background: '#059669', color: 'white', borderColor: '#059669' }}>
+                                            💾 Export as JSON (Backup)
+                                        </button>
+                                        <button onClick={exportExcel} style={{ background: '#0891b2', color: 'white', borderColor: '#0891b2' }}>
+                                            📊 Export as Excel
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="form-section">
+                                    <h3 style={{ marginBottom: '1rem' }}>📤 Import from Backup</h3>
+                                    <div className="form-group">
+                                        <label>Upload JSON Backup File</label>
+                                        <input 
+                                            type="file"
+                                            accept=".json"
+                                            onChange={handleImportJSON}
+                                        />
+                                    </div>
+                                    <p style={{ fontSize: '12px', color: '#666', marginTop: '1rem' }}>
+                                        ℹ️ Importing will replace all current properties. Export first if you want to keep existing data.
+                                    </p>
+                                </div>
+
+                                <div className="form-section" style={{ background: '#f0fdf4' }}>
+                                    <h3 style={{ marginBottom: '1rem' }}>💡 Tips</h3>
+                                    <ul style={{ fontSize: '14px', lineHeight: '1.8', marginLeft: '20px' }}>
+                                        <li>Export your data weekly to avoid loss</li>
+                                        <li>Share the Excel export with team members</li>
+                                        <li>Use JSON backups for complete data recovery</li>
+                                        <li>All data is stored locally in your browser</li>
+                                    </ul>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </>
+            );
+        };
+
+        ReactDOM.render(<CRE1031App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
