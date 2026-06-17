@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRE 1031 Exchange Analysis Platform</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #1a1a1a;
+            min-height: 100vh;
+        }
+        
+        .top-nav {
+            background: white;
+            border-bottom: 2px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .nav-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2563eb;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .nav-btn {
+            padding: 8px 14px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 4px;
+            transition: all 0.2s;
+            color: #666;
+        }
+        
+        .nav-btn:hover { background: #f0f0f0; }
+        .nav-btn.active { background: #2563eb; color: white; }
+        
+        .nav-right {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .container { 
+            max-width: 1600px; 
+            margin: 0 auto; 
+            padding: 2rem 1.5rem;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-left: 4px solid #2563eb;
+        }
+        
+        .stat-card.good { border-left-color: #16a34a; }
+        .stat-card.warning { border-left-color: #f59e0b; }
+        .stat-card.alert { border-left-color: #dc2626; }
+        
+        .stat-label { 
+            font-size: 12px; 
+            color: #999; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-change {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-content { grid-template-columns: 1fr; }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+        }
+        
+        .card h2 {
+            font-size: 20px;
+            margin-bottom: 1.5rem;
+            color: #1a1a1a;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        
+        button {
+            padding: 11px 18px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        button:hover { 
+            background: #f5f5f5; 
+            border-color: #999;
+        }
+        
+        button.primary {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+        
+        button.primary:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+        }
+        
+        button.success {
+            background: #16a34a;
+            color: white;
+            border-color: #16a34a;
+        }
+        
+        button.danger {
+            background: #dc2626;
+            color: white;
+            border-color: #dc2626;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+        
+        .property-list {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .property-item {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid #2563eb;
+            border-radius: 6px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .property-item:hover {
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .property-item.active {
+            background: #eff6ff;
+            border-left-color: #1d4ed8;
+        }
+        
+        .property-name {
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+        
+        .property-meta {
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        .comparison-table th {
+            background: #f9f9f9;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .comparison-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .comparison-table tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .metric-highlight {
+            font-weight: 600;
+            color: #2563eb;
+        }
+        
+        .ranking {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #f0fdf4;
+            color: #16a34a;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .ranking.second {
+            background: #fef3c7;
+            color: #f59e0b;
+        }
+        
+        .ranking.third {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .alert {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 14px;
+            color: #92400e;
+        }
+        
+        .alert.error {
+            background: #fee2e2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+        
+        .alert.success {
+            background: #d1fae5;
+            border-color: #a7f3d0;
+            color: #065f46;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 2rem;
+            gap: 0;
+        }
+        
+        .tab {
+            padding: 12px 18px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover {
+            color: #1a1a1a;
+        }
+        
+        .tab.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+        }
+        
+        .tenant-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 1rem;
+        }
+        
+        .tenant-table th, .tenant-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .tenant-table th {
+            background: #f9f9f9;
+            font-weight: 600;
+        }
+        
+        .expiring-soon {
+            color: #dc2626;
+            font-weight: 600;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-badge.good {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-badge.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-badge.alert {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 2rem 0;
+        }
+        
+        .note-section {
+            background: #f0f9ff;
+            border-left: 4px solid #0284c7;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-size: 13px;
+            color: #0c4a6e;
+        }
+        
+        .action-required {
+            background: #fef2f2;
+            border-left: 4px solid #dc2626;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+        
+        .action-required strong {
+            color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const CRE1031EnhancedApp = () => {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [selectedProperty, setSelectedProperty] = useState(null);
+            const [properties, setProperties] = useState([
+                {
+                    id: 1,
+                    name: 'Creekside Centennial Tech Center',
+                    address: '6403 South Uvalda Street, Centennial, CO 80111',
+                    price: 18180300,
+                    sf: 63271,
+                    noi: 1108749,
+                    capRate: 6.1,
+                    occupancy: 100,
+                    walt: 6.9,
+                    buildings: 1,
+                    yearBuilt: 2025,
+                    daysOnMarket: 45,
+                    status: 'Active',
+                    riskLevel: 'Low',
+                    tenants: [
+                        { name: 'Arapahoe Library District', sf: 23173, rate: 16.95, expires: '2036-04-30', pct: 36.6, stability: 'Excellent' },
+                        { name: 'IIM Camper', sf: 14020, rate: 17.25, expires: '2031-03-31', pct: 22.2, stability: 'Good' }
+                    ],
+                    notes: 'Class A+ new construction. Premium location. Strong anchor tenant (ALD 36.6% NRA). 100% NNN. Long WALT minimizes lease-up risk.'
+                },
+                {
+                    id: 2,
+                    name: 'Desert Canyon Business Center',
+                    address: '249-257 Elliott Rd, Henderson, NV 89011',
+                    price: 24500000,
+                    sf: 95364,
+                    noi: 1423540,
+                    capRate: 5.81,
+                    occupancy: 90,
+                    walt: 3.09,
+                    buildings: 5,
+                    yearBuilt: 2004,
+                    daysOnMarket: 120,
+                    status: 'Active',
+                    riskLevel: 'Medium',
+                    tenants: [
+                        { name: 'Integrity Customs', sf: 17553, rate: 13.5, expires: '2030-02-28', pct: 18.4, stability: 'Good' }
+                    ],
+                    notes: 'Highest absolute NOI. 25+ tenant diversification. 9,642 SF vacant = lease-up upside. 35% of rent expires by 2028. Requires active management.'
+                },
+                {
+                    id: 3,
+                    name: 'Sunchase Business Park',
+                    address: '3884 South River Road, St. George, UT 84790',
+                    price: 18600000,
+                    sf: 100110,
+                    noi: 1120772,
+                    capRate: 6.03,
+                    occupancy: 100,
+                    walt: 2.5,
+                    buildings: 5,
+                    yearBuilt: 2006,
+                    daysOnMarket: 180,
+                    status: 'Active',
+                    riskLevel: 'High',
+                    tenants: [
+                        { name: 'Decked', sf: 45106, rate: 9.1, expires: '2027-02-28', pct: 45, stability: 'Fair' }
+                    ],
+                    notes: 'Lowest price/SF. Shortest WALT (2.5 yrs). Significant lease rollover risk: 40% expires within 24 months. Requires St. George market expertise. NEGOTIATE - target entry <$18.6M.'
+                }
+            ]);
+
+            const [formData, setFormData] = useState({});
+            const [editingId, setEditingId] = useState(null);
+            const [message, setMessage] = useState('');
+
+            useEffect(() => {
+                if (properties.length > 0 && !selectedProperty) {
+                    setSelectedProperty(properties[0]);
+                }
+            }, [properties]);
+
+            const getRanking = (metric, value, higherIsBetter = true) => {
+                const sorted = [...properties].sort((a, b) => 
+                    higherIsBetter ? b[metric] - a[metric] : a[metric] - b[metric]
+                );
+                const index = sorted.findIndex(p => p.id === (selectedProperty?.id || properties[0].id));
+                if (index === 0) return 'first';
+                if (index === 1) return 'second';
+                return 'third';
+            };
+
+            const getRiskColor = (risk) => {
+                if (risk === 'Low') return 'good';
+                if (risk === 'Medium') return 'warning';
+                return 'alert';
+            };
+
+            const getCapRateRanking = () => {
+                const sorted = [...properties].sort((a, b) => b.capRate - a.capRate);
+                const index = sorted.findIndex(p => p.id === (selectedProperty?.id || properties[0].id));
+                return index === 0 ? 'first' : index === 1 ? 'second' : 'third';
+            };
+
+            const exportJSON = () => {
+                const dataStr = JSON.stringify(properties, null, 2);
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(new Blob([dataStr], { type: 'application/json' }));
+                link.download = `cre-1031-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                link.click();
+                setMessage({ type: 'success', text: '✓ Backup exported successfully' });
+                setTimeout(() => setMessage(''), 3000);
+            };
+
+            const exportExcel = () => {
+                const data = properties.map(p => ({
+                    'Property': p.name,
+                    'Address': p.address,
+                    'Price': p.price,
+                    'Price/SF': Math.round(p.price / p.sf),
+                    'SF': p.sf,
+                    'NOI': p.noi,
+                    'Cap Rate': p.capRate,
+                    'Occupancy': p.occupancy,
+                    'WALT': p.walt,
+                    'Risk': p.riskLevel
+                }));
+                const ws = XLSX.utils.json_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Properties');
+                XLSX.writeFile(wb, `cre-1031-comparison-${new Date().toISOString().slice(0, 10)}.xlsx`);
+                setMessage({ type: 'success', text: '✓ Comparison exported to Excel' });
+                setTimeout(() => setMessage(''), 3000);
+            };
+
+            const getDaysOnMarketColor = (days) => {
+                if (days < 60) return 'good';
+                if (days < 120) return 'warning';
+                return 'alert';
+            };
+
+            const current = selectedProperty || properties[0];
+
+            return (
+                <>
+                    <div className="top-nav">
+                        <div className="nav-content">
+                            <div className="nav-left">
+                                <div className="logo">🏢 CRE 1031 Platform</div>
+                                <div className="nav-buttons">
+                                    <button className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+                                        Dashboard
+                                    </button>
+                                    <button className={`nav-btn ${activeTab === 'comparison' ? 'active' : ''}`} onClick={() => setActiveTab('comparison')}>
+                                        Comparison
+                                    </button>
+                                    <button className={`nav-btn ${activeTab === 'export' ? 'active' : ''}`} onClick={() => setActiveTab('export')}>
+                                        Export
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="nav-right">
+                                <span style={{ fontSize: '13px', color: '#666' }}>{properties.length} properties</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="container">
+                        {message && (
+                            <div className={`alert ${message.type === 'error' ? 'error' : 'success'}`}>
+                                {message.text}
+                            </div>
+                        )}
+
+                        {activeTab === 'dashboard' && (
+                            <>
+                                <div className="dashboard-grid">
+                                    <div className="stat-card good">
+                                        <div className="stat-label">Total Portfolio Value</div>
+                                        <div className="stat-value">${(properties.reduce((sum, p) => sum + p.price, 0) / 1000000).toFixed(1)}M</div>
+                                        <div className="stat-change">{properties.length} properties</div>
+                                    </div>
+                                    <div className="stat-card good">
+                                        <div className="stat-label">Combined NOI</div>
+                                        <div className="stat-value">${(properties.reduce((sum, p) => sum + p.noi, 0) / 1000000).toFixed(2)}M</div>
+                                        <div className="stat-change">Annualized</div>
+                                    </div>
+                                    <div className="stat-card warning">
+                                        <div className="stat-label">Avg Cap Rate</div>
+                                        <div className="stat-value">{(properties.reduce((sum, p) => sum + p.capRate, 0) / properties.length).toFixed(2)}%</div>
+                                        <div className="stat-change">Across portfolio</div>
+                                    </div>
+                                    <div className="stat-card">
+                                        <div className="stat-label">Avg WALT</div>
+                                        <div className="stat-value">{(properties.reduce((sum, p) => sum + p.walt, 0) / properties.length).toFixed(1)}</div>
+                                        <div className="stat-change">Years</div>
+                                    </div>
+                                </div>
+
+                                <div className="main-content">
+                                    <div className="card">
+                                        <h2>Property Details</h2>
+                                        <div className="property-list">
+                                            {properties.map(prop => (
+                                                <div 
+                                                    key={prop.id}
+                                                    className={`property-item ${selectedProperty?.id === prop.id ? 'active' : ''}`}
+                                                    onClick={() => setSelectedProperty(prop)}
+                                                >
+                                                    <div className="property-name">{prop.name}</div>
+                                                    <div className="property-meta">
+                                                        <span>${(prop.price / 1000000).toFixed(1)}M @ {prop.capRate}%</span>
+                                                        <span className={`status-badge ${getRiskColor(prop.riskLevel)}`}>{prop.riskLevel}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="card">
+                                        <h2>{current.name}</h2>
+                                        <div style={{ fontSize: '13px', color: '#666', marginBottom: '1.5rem' }}>{current.address}</div>
+                                        
+                                        <div className="grid-2" style={{ fontSize: '13px' }}>
+                                            <div>
+                                                <div style={{ color: '#999', marginBottom: '0.25rem' }}>Purchase Price</div>
+                                                <div style={{ fontSize: '18px', fontWeight: '600' }}>${(current.price / 1000000).toFixed(1)}M</div>
+                                            </div>
+                                            <div>
+                                                <div style={{ color: '#999', marginBottom: '0.25rem' }}>Price/SF</div>
+                                                <div style={{ fontSize: '18px', fontWeight: '600' }}>${Math.round(current.price / current.sf)}</div>
+                                            </div>
+                                            <div>
+                                                <div style={{ color: '#999', marginBottom: '0.25rem' }}>Year 1 NOI</div>
+                                                <div style={{ fontSize: '18px', fontWeight: '600' }}>${(current.noi / 1000000).toFixed(2)}M</div>
+                                            </div>
+                                            <div>
+                                                <div style={{ color: '#999', marginBottom: '0.25rem' }}>Cap Rate</div>
+                                                <div style={{ fontSize: '18px', fontWeight: '600' }}>{current.capRate}% <span className="ranking" style={{marginLeft: '0.5rem'}}>{getCapRateRanking().toUpperCase()}</span></div>
+                                            </div>
+                                            <div>
+                                                <div style={{ color: '#999', marginBottom: '0.25rem' }}>WALT</div>
+                                                <div style={{ fontSize: '18px', fontWeight: '600' }}>{current.walt} yrs</div>
+                                            </div>
+                                            <div>
+                                                <div style={{ color: '#999', marginBottom: '0.25rem' }}>Risk Level</div>
+                                                <div style={{ fontSize: '18px', fontWeight: '600' }}>
+                                                    <span className={`status-badge ${getRiskColor(current.riskLevel)}`}>{current.riskLevel}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {current.riskLevel === 'High' && (
+                                            <div className="action-required" style={{ marginTop: '1.5rem' }}>
+                                                <strong>⚠️ Action Required:</strong> This property has elevated risk. Review lease rollover schedule and market fundamentals carefully before proceeding.
+                                            </div>
+                                        )}
+
+                                        <div className="note-section" style={{ marginTop: '1.5rem' }}>
+                                            <strong>Analysis Notes:</strong><br/>{current.notes}
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {activeTab === 'comparison' && (
+                            <div className="card">
+                                <h2>Portfolio Comparison</h2>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="comparison-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Metric</th>
+                                                {properties.map(p => <th key={p.id}>{p.name}</th>)}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Purchase Price</td>
+                                                {properties.map(p => <td key={p.id} className="metric-highlight">${(p.price / 1000000).toFixed(1)}M</td>)}
+                                            </tr>
+                                            <tr>
+                                                <td>Price/SF</td>
+                                                {properties.map(p => <td key={p.id}>${Math.round(p.price / p.sf)}</td>)}
+                                            </tr>
+                                            <tr>
+                                                <td>Total SF</td>
+                                                {properties.map(p => <td key={p.id}>{(p.sf / 1000).toFixed(1)}K</td>)}
+                                            </tr>
+                                            <tr>
+                                                <td>Year 1 NOI</td>
+                                                {properties.map(p => <td key={p.id} className="metric-highlight">${(p.noi / 1000000).toFixed(2)}M</td>)}
+                                            </tr>
+                                            <tr>
+                                                <td>NOI/SF</td>
+                                                {properties.map(p => <td key={p.id}>${(p.noi / p.sf).toFixed(2)}</td>)}
+                                            </tr>
+                                            <tr>
+                                                <td>Cap Rate</td>
+                                                {properties.map(p => <td key={p.id} className="metric-highlight">{p.capRate}%</td>)}
+                                            </tr>
+                                            <tr>
+                                                <td>Occupancy</td>
+                                                {properties.map(p => <td key={p.id}>{p.occupancy}%</td>)}
+                                            </tr>
+                                            <tr>
+                                                <td>WALT</td>
+                                                {properties.map(p => <td key={p.id}>{p.walt} yrs</td>)}
+                                            </tr>
+                                            <tr>
+                                                <td>Risk Level</td>
+                                                {properties.map(p => (
+                                                    <td key={p.id}>
+                                                        <span className={`status-badge ${getRiskColor(p.riskLevel)}`}>{p.riskLevel}</span>
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td>Buildings</td>
+                                                {properties.map(p => <td key={p.id}>{p.buildings}</td>)}
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f9f9f9', borderRadius: '6px' }}>
+                                    <h3 style={{ marginBottom: '1rem', fontSize: '16px' }}>Investment Summary</h3>
+                                    <ul style={{ fontSize: '13px', lineHeight: '1.8', color: '#666' }}>
+                                        <li><strong>Creekside:</strong> Conservative hold. Class A+ new construction, 100% NNN, long WALT (6.9 yrs), strong anchor tenant. Best for stable income.</li>
+                                        <li><strong>Desert Canyon:</strong> Value-add play. Highest NOI ($1.42M), institutional mgmt, Henderson fundamentals support. 35% rollover by 2028 = lease-up upside.</li>
+                                        <li><strong>Sunchase:</strong> Aggressive lease-up. Lowest price/SF, but 40% tenants expire within 24 months. Requires market expertise and active management. NEGOTIATE entry.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'export' && (
+                            <div className="card">
+                                <h2>Export & Data Management</h2>
+                                
+                                <div style={{ marginBottom: '2rem' }}>
+                                    <h3 style={{ marginBottom: '1rem', fontSize: '16px' }}>📥 Export Options</h3>
+                                    <div className="button-group">
+                                        <button onClick={exportJSON} className="primary">
+                                            💾 JSON Backup
+                                        </button>
+                                        <button onClick={exportExcel} className="success">
+                                            📊 Excel Comparison
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div style={{ 
+                                    background: '#f0f9ff', 
+                                    border: '1px solid #0284c7', 
+                                    borderRadius: '6px', 
+                                    padding: '1.5rem',
+                                    lineHeight: '1.8',
+                                    fontSize: '13px',
+                                    color: '#0c4a6e'
+                                }}>
+                                    <h3 style={{ marginBottom: '1rem' }}>💡 Best Practices</h3>
+                                    <ul style={{ marginLeft: '20px' }}>
+                                        <li><strong>Export weekly:</strong> Create JSON backups to avoid data loss</li>
+                                        <li><strong>Share comparisons:</strong> Excel exports for team collaboration</li>
+                                        <li><strong>Organize files:</strong> Name with dates for easy tracking</li>
+                                        <li><strong>Version control:</strong> Keep dated backups for deal history</li>
+                                        <li><strong>Secure storage:</strong> Save backups to Google Drive or shared server</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </>
+            );
+        };
+
+        ReactDOM.render(<CRE1031EnhancedApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
